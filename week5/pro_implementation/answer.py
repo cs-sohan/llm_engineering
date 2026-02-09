@@ -10,13 +10,13 @@ from tenacity import retry, wait_exponential
 load_dotenv(override=True)
 
 # MODEL = "openai/gpt-4.1-nano"
-MODEL = "groq/openai/gpt-oss-120b"
+MODEL = "gemini/gemini-3-pro-preview"
 DB_NAME = str(Path(__file__).parent.parent / "preprocessed_db")
 KNOWLEDGE_BASE_PATH = Path(__file__).parent.parent / "knowledge-base"
 SUMMARIES_PATH = Path(__file__).parent.parent / "summaries"
 
 collection_name = "docs"
-embedding_model = "text-embedding-3-large"
+embedding_model = "gemini-embedding-001"
 wait = wait_exponential(multiplier=1, min=10, max=240)
 
 openai = OpenAI()

@@ -1,5 +1,5 @@
 from pathlib import Path
-from openai import OpenAI
+from google import genai
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from chromadb import PersistentClient
@@ -11,7 +11,7 @@ from tenacity import retry, wait_exponential
 
 load_dotenv(override=True)
 
-MODEL = "openai/gpt-4.1-nano"
+MODEL = "gemini/gemini-3-pro-preview"
 
 DB_NAME = str(Path(__file__).parent.parent / "preprocessed_db")
 collection_name = "docs"
@@ -21,10 +21,9 @@ AVERAGE_CHUNK_SIZE = 100
 wait = wait_exponential(multiplier=1, min=10, max=240)
 
 
-WORKERS = 3
+WORKERS = 5
 
-openai = OpenAI()
-
+gemini = genai.Client()
 
 class Result(BaseModel):
     page_content: str
@@ -121,14 +120,25 @@ def create_chunks(documents):
     return chunks
 
 
+def batch(iterable, size):
+    for i in range(0, len(iterable), size):
+        yield iterable[i:i + size]
+
+
 def create_embeddings(chunks):
     chroma = PersistentClient(path=DB_NAME)
     if collection_name in [c.name for c in chroma.list_collections()]:
         chroma.delete_collection(collection_name)
 
     texts = [chunk.page_content for chunk in chunks]
-    emb = openai.embeddings.create(model=embedding_model, input=texts).data
-    vectors = [e.embedding for e in emb]
+    vectors = []
+
+    for text_batch in batch(texts, 100):
+        response = gemini.models.embed_content(
+            model=embedding_model,
+            contents=text_batch,
+        )
+        vectors.extend([e.values for e in response.embeddings])
 
     collection = chroma.get_or_create_collection(collection_name)
 
